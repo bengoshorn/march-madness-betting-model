@@ -83,8 +83,16 @@ def _parse_fanduel_outcomes(outcomes: list, home_team: str, away_team: str, mark
                 m.under_odds = price
 
 
-def fetch_odds(sport_key: str = None) -> list[GameOdds]:
-    """Fetch FanDuel odds for all upcoming NCAAB games."""
+def fetch_odds(sport_key: str = None, date: str = None) -> list[GameOdds]:
+    """
+    Fetch FanDuel odds for NCAAB games.
+
+    Args:
+        sport_key: The Odds API sport key (defaults to config.SPORT_KEY).
+        date: Optional date string 'YYYY-MM-DD'. When provided, only games
+              starting between midnight and 11:59 PM ET on that date are
+              returned. Defaults to all upcoming games.
+    """
     if sport_key is None:
         sport_key = config.SPORT_KEY
 
@@ -95,6 +103,12 @@ def fetch_odds(sport_key: str = None) -> list[GameOdds]:
         "bookmakers": "fanduel",
         "oddsFormat": "american",
     }
+
+    if date:
+        # ET is UTC-4 during March (EDT). Bracket games tip off from ~noon ET onward.
+        # Use a window of midnight–midnight UTC+4 to be safe and catch all tip times.
+        params["commenceTimeFrom"] = f"{date}T00:00:00Z"
+        params["commenceTimeTo"]   = f"{date}T23:59:59Z"
 
     resp = requests.get(
         f"{BASE_URL}/sports/{sport_key}/odds/",

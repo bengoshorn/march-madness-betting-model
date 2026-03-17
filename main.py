@@ -8,6 +8,7 @@ Usage:
 """
 
 import argparse
+import datetime
 import sys
 
 from tabulate import tabulate
@@ -56,7 +57,8 @@ def main():
     parser.add_argument("--bankroll", type=float, default=None, help="Override bankroll ($)")
     parser.add_argument("--sport-key", type=str, default=None, help="Override NCAAB sport key")
     parser.add_argument("--min-ev", type=float, default=None, help="Override minimum EV threshold (e.g. 0.03)")
-    parser.add_argument("--no-prompt", action="store_true", help="Skip interactive bankroll prompt")
+    parser.add_argument("--date", type=str, default=None, help="Date to pull lines for (YYYY-MM-DD). Defaults to today.")
+    parser.add_argument("--no-prompt", action="store_true", help="Skip interactive prompts")
     parser.add_argument("--verbose", action="store_true", help="Show game previews for all matchups")
     args = parser.parse_args()
 
@@ -71,26 +73,43 @@ def main():
         except (EOFError, ValueError):
             pass
 
+    # --- Date ---
+    game_date = args.date
+    if game_date is None and not args.no_prompt:
+        today = datetime.date.today().isoformat()
+        try:
+            user_input = input(f"Enter date to pull lines for (default {today}, format YYYY-MM-DD): ").strip()
+            if user_input:
+                datetime.date.fromisoformat(user_input)  # validate format
+                game_date = user_input
+            else:
+                game_date = today
+        except ValueError:
+            print(f"  [warn] Invalid date format — using today ({today}).")
+            game_date = today
+    elif game_date is None:
+        game_date = datetime.date.today().isoformat()
+
     if args.min_ev is not None:
         config.MIN_EV_THRESHOLD = args.min_ev
 
     print(f"\n{'='*65}")
-    print(f"  MARCH MADNESS BETTING MODEL — {__import__('datetime').date.today()}")
+    print(f"  MARCH MADNESS BETTING MODEL — {game_date}")
     print(f"  Bankroll: ${config.BANKROLL:,.2f}  |  Kelly: {config.KELLY_FRACTION*100:.0f}%  |  Min EV: {config.MIN_EV_THRESHOLD*100:.0f}%")
     print(f"{'='*65}")
 
     # --- Fetch odds ---
-    print("\n[1/3] Fetching FanDuel odds...")
+    print(f"\n[1/3] Fetching FanDuel odds for {game_date}...")
     sport_key = args.sport_key or config.SPORT_KEY
     try:
-        games = fetch_odds(sport_key)
+        games = fetch_odds(sport_key, date=game_date)
     except Exception as e:
         print(f"  ERROR fetching odds: {e}")
         sys.exit(1)
 
     if not games:
-        print("  No games found. The tournament may not have active lines yet.")
-        print("  Tip: Check that the sport key is correct (try --sport-key basketball_ncaab_tournament)")
+        print(f"  No games found for {game_date}. Try a different date or check the sport key.")
+        print("  Tip: Try --sport-key basketball_ncaab_tournament during the tournament.")
         sys.exit(0)
 
     print(f"  Found {len(games)} game(s) with FanDuel lines.")
