@@ -49,4 +49,17 @@ The pipeline is strictly linear: `fetch_odds` → `fetch_stats` → `model` → 
 
 ## Git workflow
 
-All changes should be committed and pushed to GitHub (`bengoshorn/march-madness-betting-model`) after each meaningful change. Use descriptive commit messages explaining *why*, not just what changed.
+After every meaningful unit of work — a bug fix, a new feature, a config change, a refactor — commit and push immediately to `bengoshorn/march-madness-betting-model`. Do not batch multiple unrelated changes into one commit. The goal is that GitHub always reflects the current working state of the project so nothing is ever lost.
+
+Commit message format:
+- Subject line: imperative mood, ≤72 chars, describes *what* changed (e.g. `Fix team name mismatch for UConn in _NAME_MAP`)
+- Body (if needed): one or two lines explaining *why*, not restating the diff
+
+Push after every commit:
+```bash
+git add <specific files>
+git commit -m "subject line"
+git push
+```
+
+Never use `git add -A` or `git add .` — always stage specific files by name to avoid accidentally committing secrets or junk files.
