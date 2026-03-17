@@ -23,9 +23,6 @@ W_CONTEXT = 0.05   # seed + conference
 # Standard deviation of NCAAB game margins (historical, ~10.5 pts)
 SIGMA = config.SIGMA
 
-# Conference tier multipliers (major conf boost)
-MAJOR_CONF_BOOST = 0.5   # points added to AdjEM difference
-
 # Seed-based shrinkage: extreme upset (e.g. 16 over 1) gets partially regressed
 SEED_DIFF_MAX = 15        # max seed gap that triggers shrinkage
 SEED_SHRINK = 0.03        # fraction to shrink expected_margin toward 0 per seed unit gap
@@ -59,13 +56,6 @@ def _seed_adjustment(seed_a: Optional[int], seed_b: Optional[int]) -> float:
     # Shrink margin by SEED_SHRINK * |diff| toward 0
     shrinkage = SEED_SHRINK * abs(diff)
     return shrinkage * (1 if diff > 0 else -1)
-
-
-def _conference_adjustment(ts_home: TeamStats, ts_away: TeamStats) -> float:
-    """Small boost to teams from major conferences (SOS calibration)."""
-    home_boost = MAJOR_CONF_BOOST if ts_home.is_major_conf else 0.0
-    away_boost = MAJOR_CONF_BOOST if ts_away.is_major_conf else 0.0
-    return home_boost - away_boost
 
 
 def predict_game(
@@ -110,10 +100,9 @@ def predict_game(
     # Scale: 1% turnover advantage ≈ ~0.7 pts per game
     to_adj = to_diff * 70.0 * W_TURNOVER
 
-    # --- 5. Context adjustment (seed + conference) ---
+    # --- 5. Context adjustment (seed) ---
     seed_adj = _seed_adjustment(ts_home.seed, ts_away.seed) * W_CONTEXT / 0.05
-    conf_adj = _conference_adjustment(ts_home, ts_away) * W_CONTEXT / 0.05
-    context_adj = (seed_adj + conf_adj) * W_CONTEXT
+    context_adj = seed_adj * W_CONTEXT
 
     # --- 6. Combine ---
     expected_margin = (
